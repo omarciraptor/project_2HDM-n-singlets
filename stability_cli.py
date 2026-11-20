@@ -74,6 +74,7 @@ def main():
 
     if user_eval_choice == 'y':
         if n_singlets == 1:
+            """       
             numeric_values = {
                                 'lam1': 0.78722,
                                 'lam2': 0.78722,
@@ -106,7 +107,82 @@ def main():
                                 'sigma_Re12_1': 0,
                                 'sigma_Im12_1': 0
                             }
-            #numeric_values = {'lam1': 2, 'lam2': 2, 'lam3': 1, 'lam4': 0, 'lamS_1111': 0, 'rho_11_11': 0, 'm11_2': 3, 'm22_2': 3, 'm_11': -2, 'tau_1': 0}
+            """
+            numeric_values = {'lam1': 2, 'lam2': 2, 'lam3': 1, 'lam4': 0, 'lamS_1111': 0, 'rho_11_11': 0, 'm11_2': 3, 'm22_2': 3, 'm_11': -2, 'tau_1': 0}
+            
+        if n_singlets == 2:
+            numeric_values = {
+                # --- 2HDM Quartic Couplings ---
+                'lam1': 1.2817,
+                'lam2': 0.3210,
+                'lam3': 7.9163,
+                'lam4': -4.1228,
+                'Re_lam5': -4.1228,
+                'Im_lam5': 0,
+                'Re_lam6': 0,
+                'Im_lam6': 0,
+                'Re_lam7': 0,
+                'Im_lam7': 0,
+
+                # --- 2HDM Quadratic Couplings ---
+                'm11_2': -31173.44,
+                'm22_2': -31191.50,
+                'Re_m12': 10.0,
+                'Im_m12': 0,
+
+                # --- Singlet Quartic Couplings (n = 2: s1, s2) ---
+                # From (d2 / 16) * (s1^2 + s2^2)^2 = 1/4 * lamS_abcd * s_a s_b s_c s_d
+                # d2 = 11.4648 -> d2/4 = 2.8662, d2/12 = 0.9554
+                'lamS_1111': 2.8662,
+                'lamS_2222': 2.8662,
+                'lamS_1122': 0.9554,
+                'lamS_1112': 0,
+                'lamS_1222': 0,
+
+                # --- Singlet Quadratic Couplings (m_ab) ---
+                # From b2/2 |S|^2 + (b1/4 S^2 + h.c.) = 1/2 m_11 s1^2 + 1/2 m_22 s2^2
+                # m_11 = (b2 + b1)/2, m_22 = (b2 - b1)/2
+                'm_11': -10705.825,
+                'm_22': -22318.645,
+                'm_12': 0,
+
+                # --- Singlet Tadpoles (tau_a) ---
+                # From a1 * S + h.c. = sqrt(2) * a1 * s1
+                'tau_1': -3103.86,
+                'tau_2': 0,
+
+                # --- Singlet Cubic Couplings (kappa_abc) ---
+                'kappa_111': 0,
+                'kappa_112': 0,
+                'kappa_122': 0,
+                'kappa_222': 0,
+
+                # --- Doublet-Singlet Quartic Portals (rho_ij_ab) ---
+                # From (delta_i / 4) * (Phi_i^+ Phi_i) * (s1^2 + s2^2) -> rho_ii_aa = delta_i / 2
+                'rho_11_11': 4.245,
+                'rho_11_22': 4.245,
+                'rho_11_12': 0,
+                'rho_22_11': 1.020,
+                'rho_22_22': 1.020,
+                'rho_22_12': 0,
+                'rho_Re12_11': 0,
+                'rho_Re12_22': 0,
+                'rho_Re12_12': 0,
+                'rho_Im12_11': 0,
+                'rho_Im12_22': 0,
+                'rho_Im12_12': 0,
+
+                # --- Doublet-Singlet Cubic Portals (sigma_ij_a) ---
+                'sigma_11_1': 0,
+                'sigma_11_2': 0,
+                'sigma_22_1': 0,
+                'sigma_22_2': 0,
+                'sigma_Re12_1': 0,
+                'sigma_Re12_2': 0,
+                'sigma_Im12_1': 0,
+                'sigma_Im12_2': 0,
+            }
+        
         else:
             numeric_values = {'lam1': 3, 'lam2': 3, 'lam3': 1, 'm11_2': 5, 'm22_2': 5}
         print("-> Loaded benchmark parameters successfully.")
@@ -175,7 +251,7 @@ def main():
         
         if fast_report['status'] == 'UNSTABLE':
             print(" RESULT: The potential is UNSTABLE (Determined by local quadratic behavior).")
-        elif fast_report['status'] == 'WEAKLY_STABLE_CANDIDATE':
+        elif fast_report['status'] == 'CONTINUE_ANALYSIS':
             print("[INFO] Fast test passed. Verifying completely with Young's Test...")
             young_report = youngs_local_test(J1, J2, J3, J4, zero_points)
             if young_report['status'] == 'YOUNG_CERTIFIED':
