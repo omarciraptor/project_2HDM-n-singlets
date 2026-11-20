@@ -62,6 +62,8 @@ def main():
     # Step 3: Minkowski transformation
     V_K, K_fields, parameters = transform_to_minkowski(V_total, n_singlets)
 
+    
+
     # Step 4: Interactive parameter assignment
     print("\n" + "=" * 70)
     print(" PARAMETER CONFIGURATION")
@@ -74,7 +76,7 @@ def main():
 
     if user_eval_choice == 'y':
         if n_singlets == 1:
-            """       
+                  
             numeric_values = {
                                 'lam1': 0.78722,
                                 'lam2': 0.78722,
@@ -107,8 +109,8 @@ def main():
                                 'sigma_Re12_1': 0,
                                 'sigma_Im12_1': 0
                             }
-            """
-            numeric_values = {'lam1': 2, 'lam2': 2, 'lam3': 1, 'lam4': 0, 'lamS_1111': 0, 'rho_11_11': 0, 'm11_2': 3, 'm22_2': 3, 'm_11': -2, 'tau_1': 0}
+            
+            #numeric_values = {'lam1': 2, 'lam2': 2, 'lam3': 1, 'lam4': 0, 'lamS_1111': 0, 'rho_11_11': 0, 'm11_2': 3, 'm22_2': 3, 'm_11': -2, 'tau_1': 0}
             
         if n_singlets == 2:
             numeric_values = {
@@ -183,8 +185,8 @@ def main():
                 'sigma_Im12_2': 0,
             }
         
-        else:
-            numeric_values = {'lam1': 3, 'lam2': 3, 'lam3': 1, 'm11_2': 5, 'm22_2': 5}
+        #else:
+        #    numeric_values = {'lam1': 3, 'lam2': 3, 'lam3': 1, 'm11_2': 5, 'm22_2': 5}
         print("-> Loaded benchmark parameters successfully.")
     else:
         print("Enter custom values as a python dictionary string:")
@@ -198,7 +200,10 @@ def main():
             numeric_values = {}
 
     # Step 5: Potential decomposition and sector extraction
+
+
     print("\n[INFO] Decomposing potential into homogeneous sectors (J4, J3, J2, J1)...")
+    print(numeric_values)
     results = decompose_potential(V_K, n_singlets, numeric_values)
     
     J1, J2, J3, J4, s_vars = results["J1"], results["J2"], results["J3"], results["J4"], results["s"]
@@ -209,6 +214,12 @@ def main():
     print(" EXTRACTED QUARTIC SECTOR (J4)")
     print("=" * 70)
     show(J4)
+
+    print("\n" + "=" * 70)
+    print(" POTENTIAL IN BILINEAR FORM")
+    print("=" * 70)
+
+    show(results["V"] )
 
     # Step 6: Stationarity analysis & Gröbner resolution
     print("\n[INFO] Building stationarity equations across topological domains...")
