@@ -297,7 +297,7 @@ def build_stationarity_equations(J_expr, K_vars, s_vars):
 
 
 # =============================================================================
-# 6. SOLVERS & FILTERS
+# 6. SOLVERS & FILTERS (With Positive-Dimensional Symmetry Slicing)
 # =============================================================================
 
 def filter_real_solutions(solutions, tol=1e-6):
@@ -317,117 +317,113 @@ def filter_real_solutions(solutions, tol=1e-6):
     return filtered
 
 
-def solve_domain_safely(equations, variables, tol=1e-6, domain_name="Unknown", method="groebner"):
-    """Safely solves polynomial equations using Lexicographical Gröbner bases."""
+def solve_domain_safely(equations, variables, slice_candidates=None, tol=1e-6, domain_name="Unknown", method="groebner"):
+    """Safely solves polynomial equations using Lexicographical Gröbner bases,
+    applying automatic orbit slicing if positive-dimensional symmetries are detected."""
     try:
         if method == "groebner":
             R = PolynomialRing(QQ, names=[str(v) for v in variables], order="lex")
-            
-
             polys = [R(SR(eq)) for eq in equations]
             I = R.ideal(polys)
-            
-            if I.dimension() != 0:
+            dim = I.dimension()
+
+            # Automatic symmetry slicing for positive-dimensional ideals (Appendix B)
+            if dim > 0:
+                print(f"[INFO] {domain_name} ideal has positive Krull dimension ({dim}). Applying orbit slicing...")
+                if slice_candidates:
+                    applied_slices = []
+                    for cand in slice_candidates:
+                        cand_poly = R(SR(cand))
+                        I_test = R.ideal(polys + [cand_poly])
+                        new_dim = I_test.dimension()
+                        # Retain the slice only if it reduces dimension without making the system inconsistent (-1)
+                        if 0 <= new_dim < dim:
+                            polys.append(cand_poly)
+                            I = I_test
+                            dim = new_dim
+                            applied_slices.append(str(cand))
+                        if dim == 0:
+                            break
+                    if applied_slices:
+                        print(f"[INFO] {domain_name} reduced to 0D using slice(s): {applied_slices}")
+
+            if dim != 0:
+                print(f"[WARNING] {domain_name} ideal remains non-zero dimensional (dim={dim}). Skipping 0D root extraction.")
                 return []
-            
 
             raw_solutions = I.variety(ring=AA)
-            
+
         else:
             R = PolynomialRing(QQ, names=[str(v) for v in variables])
             sol = phc.blackbox(equations, R)
             raw_solutions = sol.solution_dicts()
 
         return filter_real_solutions(raw_solutions, tol=tol)
-        
-    except Exception as e:
 
+    except Exception as e:
         print(f"[WARNING] Solver exception in {domain_name} domain: {e}")
         return []
 
 
 def solve_all_domains(equations_dict, K_vars, s_vars, method="groebner"):
     """Unions real stationary solutions across all domains."""
-    lam_N, lam_K, lam_S = var("lam_N lam_K lam_S")
-    soluciones = {"timelike": [], "lightlike": [], "tip": []}
-
-    def normalize(sol, variables):
-        nueva = {}
-        for var_sym in variables:
-            target = str(var_sym)
-            for k, val in sol.items():
-                if str(k) == target:
-                    nueva[var_sym] = val
-                    break
-        return nueva
-
-    # Timelike
-    sols_tl = solve_domain_safely(equations_dict["timelike"], K_vars + s_vars + [lam_N], "Timelike", method)
-    for s in sols_tl:
-        soluciones["timelike"].append(normalize(s, K_vars + s_vars))
-
-    # Lightlike
-    sols_ll = solve_domain_safely(equations_dict["lightlike"], K_vars + s_vars + [lam_N, lam_K], "Lightlike", method)
-    for s in sols_ll:
-        soluciones["lightlike"].append(normalize(s, K_vars + s_vars))
-
-    # Tip
-    sols_tip = solve_domain_safely(equations_dict["tip"], s_vars + [lam_S], "Tip", method)
-    for s in sols_tip:
-        nueva = normalize(s, s_vars)
-        for K in K_vars:
-            nueva[K] = ZZ(0)
-        soluciones["tip"].append(nueva)
-
-    return soluciones
-
-
-def solve_all_domains(equations_dict, K_vars, s_vars,
-                      method="groebner"):
-    """Unions real stationary solutions across all domains."""
-
-    # ========================================================
-    # 1. VARIABLES
-    # ========================================================
-
     K_vars = list(K_vars)
     s_vars = list(s_vars)
-
     lam_N, lam_K, lam_S = var("lam_N lam_K lam_S")
-
-    soluciones = {"timelike": [], "lightlike": [], "tip": []}
-
+    solutions = {"timelike": [], "lightlike": [], "tip": []}
 
     def normalize(sol, variables):
-        nueva = {}
+        clean = {}
         for var_sym in variables:
             target = str(var_sym)
             for k, val in sol.items():
                 if str(k) == target:
-                    nueva[var_sym] = val
+                    clean[var_sym] = val
                     break
-        return nueva
+        return clean
 
-    # Timelike
-    sols_tl = solve_domain_safely(equations_dict["timelike"], K_vars + s_vars + [lam_N], domain_name="Timelike", method=method)
+    # Candidate slice variables to break continuous O(n) / SO(3) degeneracies in J4:
+    # Spatial bilinears (K1, K2, K3) and higher singlets (s_2, ..., s_n)
+    spatial_K = K_vars[1:] if len(K_vars) > 1 else []
+    extra_s = s_vars[1:] if len(s_vars) > 1 else []
+
+    # 1. Timelike
+    sols_tl = solve_domain_safely(
+        equations_dict["timelike"],
+        K_vars + s_vars + [lam_N],
+        slice_candidates=extra_s + spatial_K,
+        domain_name="Timelike",
+        method=method
+    )
     for s in sols_tl:
-        soluciones["timelike"].append(normalize(s, K_vars + s_vars))
+        solutions["timelike"].append(normalize(s, K_vars + s_vars))
 
-    # Lightlike
-    sols_ll = solve_domain_safely(equations_dict["lightlike"], K_vars + s_vars + [lam_N, lam_K], domain_name="Lightlike", method=method)
+    # 2. Lightlike
+    sols_ll = solve_domain_safely(
+        equations_dict["lightlike"],
+        K_vars + s_vars + [lam_N, lam_K],
+        slice_candidates=extra_s + spatial_K,
+        domain_name="Lightlike",
+        method=method
+    )
     for s in sols_ll:
-        soluciones["lightlike"].append(normalize(s, K_vars + s_vars))
+        solutions["lightlike"].append(normalize(s, K_vars + s_vars))
 
-    # Tip
-    sols_tip = solve_domain_safely(equations_dict["tip"], s_vars + [lam_S], domain_name="Tip", method=method)
-
+    # 3. Tip (K = 0, so only singlet variables are active)
+    sols_tip = solve_domain_safely(
+        equations_dict["tip"],
+        s_vars + [lam_S],
+        slice_candidates=extra_s,
+        domain_name="Tip",
+        method=method
+    )
     for s in sols_tip:
-        nueva = normalize(s, s_vars)
+        clean = normalize(s, s_vars)
         for K in K_vars:
-            nueva[K] = ZZ(0)
-        soluciones["tip"].append(nueva)
+            clean[K] = ZZ(0)
+        solutions["tip"].append(clean)
 
-    return soluciones
+    return solutions
 
 
 
